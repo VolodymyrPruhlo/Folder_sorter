@@ -35,17 +35,39 @@ def collect_files_and_folders(path, excluded_folders=None):
     return items
 
 
-def check_folder(folder_name, known_extension, unknown_extension):
+def check_folder(folder_name, known_extension, unknown_extension, archives_folder):
     if folder_name.is_file():
         print(f"I don't sort files")
     elif folder_name.is_dir():
         if not any(folder_name.iterdir()):
-            shutil.rmtree(folder_name)
-            print(f'Folder: {folder_name} was deleted')
+            if folder_name != archives_folder:
+                shutil.rmtree(folder_name)
+                print(f'Folder: {folder_name} was deleted')
         else:
             for files in folder_name.iterdir():
                 if files.is_dir():
-                    check_folder(files, known_extension, unknown_extension)
+                    check_folder(files, known_extension, unknown_extension, archives_folder)
+                elif archive_extension := is_archive(files.name, dict_extension):
+                    if unpack_archive(files, folder_name):
+                        files.unlink()
+                    else:
+                        unknown_extension.add(archive_extension)
+
+
+def is_archive(filename, dict_extension):
+    extensions = dict_extension['archives']
+    if filename.endswith(extensions):
+        return filename.split('.')[-1]
+    return None
+
+
+def unpack_archive(archive_path, destination_folder):
+    try:
+        # Використовуємо shutil для розпакування архівів
+        shutil.unpack_archive(archive_path, destination_folder)
+        return True
+    except shutil.ReadError:
+        return False
 
 
 def sort_files_by_extension(items, dict_extension, known_extension, unknown_extension):
@@ -68,7 +90,6 @@ def sort_files_by_extension(items, dict_extension, known_extension, unknown_exte
                         print(f"Failed to move {item}: {e}")
             if not sorted:
                 unknown_extension.add(file_extension)
-                # Перевіряємо, чи існує папка "unknown" в родича папки item
                 unknown_folder_path = item.parent / 'unknown'
                 if not unknown_folder_path.exists():
                     unknown_folder_path.mkdir(exist_ok=True)
@@ -109,7 +130,7 @@ if __name__ == '__main__':
             # Перелік папок, які слід ігнорувати при зборі файлів та папок
             excluded_folders = {"archives", "video", "audio", "documents", "images", 'unknown'}
 
-            check_folder(my_object_folder, known_extension, unknown_extension)
+            check_folder(my_object_folder, known_extension, unknown_extension, my_object_folder / 'archives')
             items_to_sort = collect_files_and_folders(my_object_folder, excluded_folders)
             sort_files_by_extension(items_to_sort, dict_extension, known_extension, unknown_extension)
 
