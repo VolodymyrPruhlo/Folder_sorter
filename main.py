@@ -35,20 +35,20 @@ def collect_files_and_folders(path, excluded_folders=None):
     return items
 
 
-def check_folder(folder_name, known_extension, unknown_extension, excluded_folders=None):
+def check_folder(folder_name, known_extension, unknown_extension):
     if folder_name.is_file():
         print(f"I don't sort files")
-    elif folder_name.is_dir() and folder_name.name not in excluded_folders:
+    elif folder_name.is_dir():
         if not any(folder_name.iterdir()):
             shutil.rmtree(folder_name)
             print(f'Folder: {folder_name} was deleted')
         else:
             for files in folder_name.iterdir():
-                if files.is_dir() and files.name not in excluded_folders:
-                    check_folder(files, known_extension, unknown_extension, excluded_folders)
+                if files.is_dir():
+                    check_folder(files, known_extension, unknown_extension)
 
 
-def sort_files_by_extension(items, dict_extension, known_extension, unknown_extension, excluded_folders=None):
+def sort_files_by_extension(items, dict_extension, known_extension, unknown_extension):
     for item in items:
         if item.is_file() and not item.name.startswith('.DS_Store'):
             normalized_filename = normalize(item.name)
@@ -57,28 +57,26 @@ def sort_files_by_extension(items, dict_extension, known_extension, unknown_exte
             for key, val in dict_extension.items():
                 if file_extension in val:
                     known_extension.add(file_extension)
-                    if key not in excluded_folders:
-                        new_folder_path = item.parent / key
-                        if not new_folder_path.exists():
-                            new_folder_path.mkdir(exist_ok=True)
-                        new_file_path = new_folder_path / normalized_filename
-                        try:
-                            item.rename(new_file_path)
-                            sorted = True
-                            break
-                        except Exception as e:
-                            print(f"Failed to move {item}: {e}")
-            if not sorted:
-                unknown_extension.add(file_extension)
-                if 'unknown' not in excluded_folders:
-                    new_folder_path = item.parent / 'unknown'
-                    if not new_folder_path.exists():
-                        new_folder_path.mkdir(exist_ok=True)
+                    new_folder_path = item.parent / key
+                    new_folder_path.mkdir(exist_ok=True)
                     new_file_path = new_folder_path / normalized_filename
                     try:
                         item.rename(new_file_path)
+                        sorted = True
+                        break
                     except Exception as e:
                         print(f"Failed to move {item}: {e}")
+            if not sorted:
+                unknown_extension.add(file_extension)
+                # Перевіряємо, чи існує папка "unknown" в родича папки item
+                unknown_folder_path = item.parent / 'unknown'
+                if not unknown_folder_path.exists():
+                    unknown_folder_path.mkdir(exist_ok=True)
+                new_file_path = unknown_folder_path / normalized_filename
+                try:
+                    item.rename(new_file_path)
+                except Exception as e:
+                    print(f"Failed to move {item}: {e}")
 
 
 def print_result(known_extension, unknown_extension):
@@ -105,13 +103,15 @@ if __name__ == '__main__':
                 "archives": ('ZIP', 'GZ', 'TAR')
             }
 
-            excluded_folders = ["images", "video", "audio", "documents", "archives", "unknown"]
             known_extension = set()
             unknown_extension = set()
 
-            check_folder(my_object_folder, known_extension, unknown_extension, excluded_folders)
+            # Перелік папок, які слід ігнорувати при зборі файлів та папок
+            excluded_folders = {"archives", "video", "audio", "documents", "images", 'unknown'}
+
+            check_folder(my_object_folder, known_extension, unknown_extension)
             items_to_sort = collect_files_and_folders(my_object_folder, excluded_folders)
-            sort_files_by_extension(items_to_sort, dict_extension, known_extension, unknown_extension, excluded_folders)
+            sort_files_by_extension(items_to_sort, dict_extension, known_extension, unknown_extension)
 
             print_result(known_extension, unknown_extension)
         else:
