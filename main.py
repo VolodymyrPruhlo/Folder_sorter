@@ -92,7 +92,7 @@ def sort_files_by_extension(items, dict_extension, known_extension, unknown_exte
                         print(f"Failed to move {item}: {e}")
             if not sorted:
                 unknown_extension.add(file_extension)
-                unknown_folder_path = item.parent / 'unknown'
+                unknown_folder_path = my_object_folder / 'unknown'
                 if not unknown_folder_path.exists():
                     unknown_folder_path.mkdir(exist_ok=True)
                 new_file_path = unknown_folder_path / normalized_filename
