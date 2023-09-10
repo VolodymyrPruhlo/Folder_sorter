@@ -43,6 +43,7 @@ def check_folder(folder_name, known_extension, unknown_extension, archives_folde
             if folder_name != archives_folder:
                 shutil.rmtree(folder_name)
                 print(f'Folder: {folder_name} was deleted')
+            return  # Додайте цей рядок для виходу, якщо папка порожня
         else:
             for files in folder_name.iterdir():
                 if files.is_dir():
@@ -52,6 +53,7 @@ def check_folder(folder_name, known_extension, unknown_extension, archives_folde
                         files.unlink()
                     else:
                         unknown_extension.add(archive_extension)
+
 
 
 def is_archive(filename, dict_extension):
@@ -79,7 +81,7 @@ def sort_files_by_extension(items, dict_extension, known_extension, unknown_exte
             for key, val in dict_extension.items():
                 if file_extension in val:
                     known_extension.add(file_extension)
-                    new_folder_path = item.parent / key
+                    new_folder_path = my_object_folder / key
                     new_folder_path.mkdir(exist_ok=True)
                     new_file_path = new_folder_path / normalized_filename
                     try:
@@ -98,6 +100,16 @@ def sort_files_by_extension(items, dict_extension, known_extension, unknown_exte
                     item.rename(new_file_path)
                 except Exception as e:
                     print(f"Failed to move {item}: {e}")
+
+
+def remove_empty_folders(folders):
+    empty_folders = []
+    for item in folders:
+        if not item.parent.iterdir():
+            empty_folders.append(item.parent)
+
+    for folder in empty_folders:
+        folder.rmdir()
 
 
 def print_result(known_extension, unknown_extension):
@@ -127,12 +139,14 @@ if __name__ == '__main__':
             known_extension = set()
             unknown_extension = set()
 
-            # Перелік папок, які слід ігнорувати при зборі файлів та папок
             excluded_folders = {"archives", "video", "audio", "documents", "images", 'unknown'}
 
             check_folder(my_object_folder, known_extension, unknown_extension, my_object_folder / 'archives')
             items_to_sort = collect_files_and_folders(my_object_folder, excluded_folders)
             sort_files_by_extension(items_to_sort, dict_extension, known_extension, unknown_extension)
+
+            check_folder(my_object_folder, known_extension, unknown_extension, my_object_folder / 'archives')
+            remove_empty_folders(items_to_sort)
 
             print_result(known_extension, unknown_extension)
         else:
